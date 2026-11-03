@@ -14,6 +14,8 @@ use std::thread::{self, JoinHandle};
 use libc::{self};
 use std::ffi::CString;
 
+mod ipc;
+
 const INITIAL_SCVS: usize = 5;
 const TARGET_MARINES: i32 = 20;
 const MAX_UNITS: i32 = 200;
@@ -114,6 +116,8 @@ fn main() -> io::Result<()> {
         );
     }
 
+    let socket_server = ipc::start_server(tx.clone())?;
+    let mut should_exit = false;
     loop {
         match rx.recv() {
             Ok(Event::Input(command)) => {
@@ -196,12 +200,20 @@ fn main() -> io::Result<()> {
                 ));
             }
 
+            Ok(Event::Socket(request)) => {
+                should_exit = handle_socket_request(request, &shared)?;
+            }
+
             Err(_) => {
                 // Every Sender has been dropped.
                 break;
             }
         }
         
+        if should_exit {
+            break;
+        }
+
         game = read_shared_game(&shared)?;
 
         if game.marine_count >= TARGET_MARINES {
@@ -215,6 +227,8 @@ fn main() -> io::Result<()> {
         }
     }
 
+    socket_server.stop()?;
+
     stop_workers(&mut shared)?;
 
     while !children.is_empty() {
@@ -227,6 +241,12 @@ fn main() -> io::Result<()> {
                 return Err(io::Error::other(
                     format!("Child reaper failed during shutdown: {error}"),
                 ));
+            }
+
+            Ok(Event::Socket(request)) => {
+                let _ = request.response.send(
+                    "Game is shutting down.".to_string()
+                );
             }
 
             Ok(Event::Input(_))
@@ -743,9 +763,45 @@ fn request_shutdown(shared: &SharedGame) -> io::Result<()> {
     Ok(())
 }
 
+fn handle_socket_request(
+    request: ipc::SocketRequest,
+    shared: &SharedGame,
+) -> io::Result<bool> {
+    match request.command {
+        ipc::GameCommand::Status => {
+            let game = read_shared_game(shared)?;
+
+            let remaining_minerals: i32 = game.map_minerals.iter().sum();
+
+            let response = format!(
+                "Player minerals: {}\n\
+                 Remaining minerals: {}\n\
+                 SCVs: {}\n\
+                 Marines: {}",
+                game.player_minerals,
+                remaining_minerals,
+                game.scv_count,
+                game.marine_count,
+            );
+
+            let _ = request.response.send(response);
+
+            Ok(false)
+        }
+
+        ipc::GameCommand::Exit => {
+            let _ = request.response.send(
+                "Shutdown requested. The game is exiting.".to_string()
+            );
+
+            Ok(true)
+        }
+    }
+}
+
 // Event listening for signals from child processes and input from stdin.
 
-enum Event {
+pub(crate) enum Event {
     Input(String),
     InputClosed,
     InputError(String),
@@ -756,6 +812,8 @@ enum Event {
     },
 
     ReaperError(String),
+
+    Socket(ipc::SocketRequest),
 }
 
 fn start_child_reaper(
