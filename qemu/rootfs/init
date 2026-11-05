@@ -1,0 +1,10 @@
+#!/bin/sh
+
+/bin/busybox mount -t proc proc /proc
+/bin/busybox mount -t sysfs sysfs /sys
+
+echo "================================"
+echo " Minimal Linux environment booted"
+echo "================================"
+
+exec /bin/my-init
