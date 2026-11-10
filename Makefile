@@ -16,7 +16,7 @@ run: initramfs
 		-kernel qemu/vmlinuz \
 		-initrd qemu/initramfs.cpio.gz \
 		-append "console=ttyS0 rdinit=/init" \
-		-nographic
+		-serial stdio 
 
 clean:
 	cargo clean

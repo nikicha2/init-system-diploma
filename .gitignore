@@ -31,3 +31,5 @@ rustc-ice-*.txt
 # Build artifacts
 *.iso
 *.log
+
+./qemu/rootfs/bin/my-init
