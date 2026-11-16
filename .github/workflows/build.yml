@@ -3,14 +3,15 @@ name: Release
 on:
   push:
     branches: ["main"]
-
-permissions:
-  contents: write
+  pull_request:
+    branches: ["main"]
 
 jobs:
   build:
-    name: Build and Publish
+    name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -20,8 +21,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Install Rust target
-        run: |
-          rustup target add x86_64-unknown-linux-musl
+        run: rustup target add x86_64-unknown-linux-musl
 
       - name: Build project
         run: cargo build --release --target x86_64-unknown-linux-musl
@@ -33,6 +33,27 @@ jobs:
           tar -czf dist/init-system-diploma-x86_64-linux-musl.tar.gz \
             -C target/x86_64-unknown-linux-musl/release \
             init-system-diploma
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: init-system-diploma
+          path: dist/init-system-diploma-x86_64-linux-musl.tar.gz
+
+  release:
+    name: Publish Release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: init-system-diploma
+          path: dist
 
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v3
