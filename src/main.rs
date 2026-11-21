@@ -1,24 +1,16 @@
-use std::{
-    process::{Command, Stdio},
-    thread,
-    time::Duration,
-};
+mod event;
+mod process;
 
-fn main() {
-    println!(" Rust init system started");
-    println!(" PID: {}", std::process::id());
+use std::sync::mpsc;
 
-    println!("Starting BusyBox shell...");
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let (tx, rx) = mpsc::channel();
 
-    let status = Command::new("/bin/sh")
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status();
+    let (reaper_handle, reaper_thread) =
+        process::start_child_reaper(tx.clone())?;
 
-    println!("Shell exited: {status:?}");
+    reaper_handle.close();
+    reaper_thread.join().expect("Reaper thread panicked");
 
-    loop {
-        thread::sleep(Duration::from_secs(60));
-    }
+    Ok(())
 }
