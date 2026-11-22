@@ -7,7 +7,13 @@ pub(crate) fn run(rx: Receiver<Event>) {
         match rx.recv() {
             Ok(event) => match event {
                 Event::ChildExited { pid, status } => {
-                    println!("Child {pid} exited with status {status}");
+                    if libc::WIFEXITED(status) {
+                        let exit_code = libc::WEXITSTATUS(status);
+                        println!("Child {pid} exited with code {exit_code}");
+                    } else if libc::WIFSIGNALED(status) {
+                        let signal = libc::WTERMSIG(status);
+                        println!("Child {pid} terminated by signal {signal}");
+                    }
                 }
 
                 Event::ReaperError(error) => {
