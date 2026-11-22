@@ -11,9 +11,7 @@ use signal_hook::{
 
 use crate::event::Event;
 
-pub(crate) fn start_child_reaper(
-    tx: Sender<Event>,
-) -> io::Result<(SignalsHandle, JoinHandle<()>)> {
+pub(crate) fn start_child_reaper(tx: Sender<Event>) -> io::Result<(SignalsHandle, JoinHandle<()>)> {
     // Register the SIGCHLD listener.
     let mut signals = Signals::new([SIGCHLD])?;
 
@@ -24,15 +22,10 @@ pub(crate) fn start_child_reaper(
             loop {
                 let mut status: libc::c_int = 0;
 
-                let pid = unsafe {
-                    libc::waitpid(-1, &mut status, libc::WNOHANG)
-                };
+                let pid = unsafe { libc::waitpid(-1, &mut status, libc::WNOHANG) };
 
                 if pid > 0 {
-                    if tx
-                        .send(Event::ChildExited { pid, status })
-                        .is_err()
-                    {
+                    if tx.send(Event::ChildExited { pid, status }).is_err() {
                         return;
                     }
 

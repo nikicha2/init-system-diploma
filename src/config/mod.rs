@@ -8,8 +8,4 @@ pub(crate) struct ServiceConfig {
     pub requires: Vec<String>,
 }
 
-pub(crate) use test_config::{
-    single_process,
-    parallel_processes,
-    ordered_processes,
-};
+pub(crate) use test_config::ordered_processes;

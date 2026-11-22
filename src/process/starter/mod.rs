@@ -11,9 +11,7 @@ pub(crate) enum ServiceState {
     Failed,
 }
 
-pub(crate) fn start_services(
-    services: &[ServiceConfig],
-) -> HashMap<String, ServiceState> {
+pub(crate) fn start_services(services: &[ServiceConfig]) -> HashMap<String, ServiceState> {
     let mut states = HashMap::new();
 
     for service in services {
@@ -29,19 +27,18 @@ pub(crate) fn start_services(
             }
 
             let after_ready = service.after.iter().all(|dependency| {
-                states.get(dependency)
+                states
+                    .get(dependency)
                     .is_some_and(|state| *state != ServiceState::Pending)
             });
 
-            let requires_ready = service.requires.iter().all(|dependency| {
-                states.get(dependency) == Some(&ServiceState::Started)
-            });
+            let requires_ready = service
+                .requires
+                .iter()
+                .all(|dependency| states.get(dependency) == Some(&ServiceState::Started));
 
             let requires_failed = service.requires.iter().any(|dependency| {
-                matches!(
-                    states.get(dependency),
-                    None | Some(ServiceState::Failed)
-                )
+                matches!(states.get(dependency), None | Some(ServiceState::Failed))
             });
 
             if requires_failed {
