@@ -1,11 +1,13 @@
 
-.PHONY: build initramfs run clean
+.PHONY: build install initramfs run clean
 
 build:
 	cargo build --release --target x86_64-unknown-linux-musl
+
+install: build
 	cp target/x86_64-unknown-linux-musl/release/init-system-diploma qemu/rootfs/bin/my-init
 
-initramfs: build
+initramfs: install
 	./qemu/build-initramfs.sh
 
 run: initramfs

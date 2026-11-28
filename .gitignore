@@ -32,4 +32,4 @@ rustc-ice-*.txt
 *.iso
 *.log
 
-./qemu/rootfs/bin/my-init
+/qemu/rootfs/bin/my-init
