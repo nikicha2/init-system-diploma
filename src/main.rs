@@ -12,13 +12,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (reaper_handle, reaper_thread) = process::start_child_reaper(tx.clone())?;
 
-    let states = process::start_services(&services);
+    let mut registry = process::initialize_services(&services);
 
-    println!("Service states: {:?}", states);
+    println!("Service states: {:?}", registry.states());
 
     drop(tx);
 
-    event_loop::run(rx);
+    event_loop::run(rx, &mut registry);
 
     reaper_handle.close();
     reaper_thread.join().expect("Reaper thread panicked");

@@ -1,18 +1,18 @@
 use std::sync::mpsc::Receiver;
 
-use crate::event::Event;
+use crate::{event::Event, process::ServiceRegistry};
 
-pub(crate) fn run(rx: Receiver<Event>) {
+pub(crate) fn run(rx: Receiver<Event>, registry: &mut ServiceRegistry) {
     loop {
         match rx.recv() {
             Ok(event) => match event {
                 Event::ChildExited { pid, status } => {
-                    if libc::WIFEXITED(status) {
-                        let exit_code = libc::WEXITSTATUS(status);
-                        println!("Child {pid} exited with code {exit_code}");
-                    } else if libc::WIFSIGNALED(status) {
-                        let signal = libc::WTERMSIG(status);
-                        println!("Child {pid} terminated by signal {signal}");
+                    if let Some((service_name, process_exit)) =
+                        registry.handle_child_exit(pid, status)
+                    {
+                        println!("Service {service_name} (PID {pid}) {process_exit}");
+                    } else {
+                        eprintln!("Received exit event for unknown child PID {pid}");
                     }
                 }
 
